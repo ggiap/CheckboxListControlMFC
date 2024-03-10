@@ -13,6 +13,7 @@ CCheckableListCtrl::~CCheckableListCtrl()
 
 BEGIN_MESSAGE_MAP(CCheckableListCtrl, CListCtrl)
 	ON_WM_LBUTTONDOWN()
+    ON_NOTIFY_REFLECT(NM_CLICK, OnNMClick)
 END_MESSAGE_MAP()
 
 void CCheckableListCtrl::OnLButtonDown(UINT nFlags, CPoint point)
@@ -51,4 +52,88 @@ void CCheckableListCtrl::OnLButtonDown(UINT nFlags, CPoint point)
 
     // Call the parent class's OnLButtonDown in case it has important logic
     CListCtrl::OnLButtonDown(nFlags, point);
+}
+
+void CCheckableListCtrl::OnNMClick(NMHDR* pNMHDR, LRESULT* pResult)
+{
+    LPNMITEMACTIVATE pNMItemActivate = reinterpret_cast<LPNMITEMACTIVATE>(pNMHDR);
+    // Retrieve the mouse click position
+    CPoint clickPoint = pNMItemActivate->ptAction;
+
+    // Perform a hit test to find out where the list was clicked
+    LVHITTESTINFO hitTestInfo;
+    hitTestInfo.pt = clickPoint;
+    HitTest(&hitTestInfo);
+
+    if (hitTestInfo.iItem != -1)
+    {
+        // Calculate the icon's position based on the control's width and the icon's size
+        const int iconSize = 16; // Icon size
+        const int marginRight = 180; // Margin from the right edge of the control
+
+        CRect rcList;
+        GetClientRect(&rcList);
+        int listWidth = rcList.Width();
+
+        int iconX = listWidth - iconSize - marginRight;
+        int iconY = hitTestInfo.iItem; // Placeholder for actual Y position calculation
+
+        RECT itemRect;
+        GetItemRect(hitTestInfo.iItem, &itemRect, LVIR_BOUNDS);
+        int iconYTop = itemRect.top + (itemRect.bottom - itemRect.top - iconSize) / 2;
+        int iconYBottom = iconYTop + iconSize;
+
+        // Check if the click was within the icon's bounds
+        if (clickPoint.x >= iconX && clickPoint.x <= (iconX + iconSize) &&
+            clickPoint.y >= iconYTop && clickPoint.y <= iconYBottom)
+        {
+            // The click was on the icon, toggle expansion
+            if (IsItemExpandable(hitTestInfo.iItem))
+            {
+                ToggleChildRows(hitTestInfo.iItem);
+            }
+        }
+    }
+}
+
+bool CCheckableListCtrl::IsItemExpandable(int nItem)
+{
+    return m_ExpandableItems.find(nItem) != m_ExpandableItems.end();
+}
+
+void CCheckableListCtrl::AddExpandableItem(int parentIndex, const std::vector<CString>& childItems)
+{
+    // Store child items for the parent index
+    m_ExpandableItems[parentIndex] = childItems;
+    // Initially, parents are not expanded
+    m_ExpandedItems[parentIndex] = false;
+}
+
+void CCheckableListCtrl::ToggleChildRows(int nItem)
+{
+    auto it = m_ExpandedItems.find(nItem);
+    if (it != m_ExpandedItems.end())
+    {
+        bool isExpanded = it->second;
+        auto children = m_ExpandableItems[nItem];
+
+        if (isExpanded)
+        {
+            // Collapse: Remove child items
+            for (size_t i = 0; i < children.size(); ++i)
+            {
+                DeleteItem(nItem + 1); // Assuming children are directly below the parent
+            }
+        }
+        else
+        {
+            // Expand: Add child items
+            for (size_t i = 0; i < children.size(); ++i)
+            {
+                InsertItem(LVIF_TEXT, nItem + 1 + i, children[i], 0, 0, 0, 0);
+            }
+        }
+        // Toggle expanded state
+        m_ExpandedItems[nItem] = !isExpanded;
+    }
 }

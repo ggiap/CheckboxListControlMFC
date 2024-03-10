@@ -103,30 +103,42 @@ BOOL CMFCApplication1Dlg::OnInitDialog()
 
 	// TODO: Add extra initialization here
 
-	// Assuming you have a predetermined number of items in the list
-	int numberOfItems = 2; // Example item count
+	int numberOfItems = 4; // Change this as necessary
 	m_listCtrl.m_checkboxStates.resize(numberOfItems, std::make_pair(false, false)); // Initialize all to unchecked
 
-	// Assuming you want to place the list control at (10,10) with a size of 300x200
 	CRect listRect(10, 10, 310, 210);
 
-	// Create the list control
-	// LVS_REPORT allows you to use it in report mode
-	// WS_BORDER | WS_VISIBLE | WS_CHILD are typical styles you might need
 	m_listCtrl.Create(WS_BORDER | WS_VISIBLE | WS_CHILD | LVS_REPORT, listRect, this, IDC_MYLISTCONTROL_ID);
-	m_listCtrl.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER);
+	m_listCtrl.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_OWNERDRAWFIXED);
 	m_listCtrl.SendMessage(LVM_SETEXTENDEDLISTVIEWSTYLE, 0, LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER);
 
+	//m_listCtrl.InsertColumn(0, _T("Label and Checkboxes"), LVCFMT_LEFT, 200);
+	//// Add rows with labels. Checkboxes will be added later.
+	//m_listCtrl.InsertItem(0, _T("Row 1 Label"));
+	//m_listCtrl.InsertItem(1, _T("Row 2 Label"));
+	//m_listCtrl.InsertItem(3, _T("Row 3 Label"));
+	//m_listCtrl.InsertItem(4, _T("Row 4 Label"));
 
-	m_listCtrl.InsertColumn(0, _T("Label and Checkboxes"), LVCFMT_LEFT, 200);
+	m_listCtrl.InsertColumn(1, _T("Item"), LVCFMT_LEFT, 120);
 
-	// Add rows with labels. Checkboxes will be added later.
-	m_listCtrl.InsertItem(0, _T("Row 1 Label"));
-	m_listCtrl.InsertItem(1, _T("Row 2 Label"));
+	// Initialize the list control with some items (parents and children)
+	InitializeListControl();
+
 
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
 
+void CMFCApplication1Dlg::InitializeListControl()
+{
+	// Insert parent items into the list and mark them as expandable
+	int parentIndex1 = m_listCtrl.InsertItem(LVIF_TEXT, 0, _T("Parent Item 1"), 0, 0, 0, 0);
+	std::vector<CString> children1 = { _T("Child Item 1.1"), _T("Child Item 1.2") };
+	m_listCtrl.AddExpandableItem(parentIndex1, children1);
+
+	/*int parentIndex2 = m_listCtrl.InsertItem(LVIF_TEXT, 5, _T("Parent Item 2"), 0, 0, 0, 0);
+	std::vector<CString> children2 = { _T("Child Item 2.1"), _T("Child Item 2.2"), _T("Child Item 2.3") };
+	m_listCtrl.AddExpandableItem(parentIndex2, children2);*/
+}
 
 void CMFCApplication1Dlg::OnSysCommand(UINT nID, LPARAM lParam)
 {
@@ -177,7 +189,7 @@ HCURSOR CMFCApplication1Dlg::OnQueryDragIcon()
 	return static_cast<HCURSOR>(m_hIcon);
 }
 
-void CMFCApplication1Dlg::OnNMCustomdrawCCheckableList(NMHDR* pNMHDR, LRESULT* pResult)
+void CMFCApplication1Dlg::OnNMCustomdrawYourListControl(NMHDR* pNMHDR, LRESULT* pResult)
 {
 	LPNMLVCUSTOMDRAW pLVCD = reinterpret_cast<LPNMLVCUSTOMDRAW>(pNMHDR);
 
@@ -215,15 +227,48 @@ void CMFCApplication1Dlg::OnNMCustomdrawCCheckableList(NMHDR* pNMHDR, LRESULT* p
 		int offset = rcFirstCheckbox.Width() + rcSecondCheckbox.Width() + 15;
 
 		CString str;
-		str.Format(_T("%d"), 5);
-		//str = std::to_wstring(nItem).data();
+		str.Format(_T("%d"), nItem);
 		// Draw the text
 		CString itemText = _T("Item ") + str;
 		pDC->TextOutW(rcItem.left + offset, rcItem.top + 5, itemText);
 
+		int nnItem = static_cast<int>(pLVCD->nmcd.dwItemSpec);
+		if (m_listCtrl.IsItemExpandable(nnItem)) // Your method to check if the item is expandable
+		{
+			// Assuming a 16x16 icon size
+			const int iconSize = 16;
+			// Margin from the right edge of the control
+			const int marginRight = 180;
+
+			// Get the list control's width
+			CRect rcList;
+			m_listCtrl.GetClientRect(&rcList);
+			int listWidth = rcList.Width();
+
+			// Calculate icon's X position (aligned to the right)
+			int iconX = listWidth - iconSize - marginRight;
+			// Calculate icon's Y position (centered vertically within the item's row)
+			RECT itemRect;
+			m_listCtrl.GetItemRect(nnItem, &itemRect, LVIR_BOUNDS);
+			int iconY = itemRect.top + (itemRect.bottom - itemRect.top - iconSize) / 2;
+
+			// Get the system image list containing the arrow icons
+			SHFILEINFO sfi;
+			HIMAGELIST hImageList = reinterpret_cast<HIMAGELIST>(SHGetFileInfo(L"C:\\",
+				0, &sfi, sizeof(SHFILEINFO), SHGFI_SYSICONINDEX | SHGFI_SMALLICON));
+
+			if (hImageList != nullptr)
+			{
+				// Assuming you want to use a specific arrow icon, adjust the index as needed
+				int iconIndex = 10; // Example index, you might need to find the correct index for an arrow
+				ImageList_Draw(hImageList, iconIndex, pLVCD->nmcd.hdc, iconX, iconY, ILD_TRANSPARENT);
+			}
+		}
+
 		*pResult = CDRF_SKIPDEFAULT; // We've drawn everything
+		break;
 	}
-	break;
+
 	}
 }
 
