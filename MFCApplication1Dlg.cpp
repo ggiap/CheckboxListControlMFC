@@ -177,7 +177,7 @@ HCURSOR CMFCApplication1Dlg::OnQueryDragIcon()
 	return static_cast<HCURSOR>(m_hIcon);
 }
 
-void CMFCApplication1Dlg::OnNMCustomdrawYourListControl(NMHDR* pNMHDR, LRESULT* pResult)
+void CMFCApplication1Dlg::OnNMCustomdrawCCheckableList(NMHDR* pNMHDR, LRESULT* pResult)
 {
 	LPNMLVCUSTOMDRAW pLVCD = reinterpret_cast<LPNMLVCUSTOMDRAW>(pNMHDR);
 
